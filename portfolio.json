@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "name": "tensor-pilot-144-ryan-vo",
+  "owner": "A220man",
+  "email": "ryandtvo@gmail.com",
+  "domain": "AI/ML developer tools",
+  "summary": "Work in progress: tensor-pilot-144-ryan-vo",
+  "workflows": [
+    "Create voice profiles from reference audio for zero-shot TTS",
+    "Generate multilingual speech with configurable VoxCPM2 parameters",
+    "Manage LoRA fine-tuning jobs for custom voice/language adaptation"
+  ],
+  "auth": "oidc-keycloak-saml-broker",
+  "llm_providers": [
+    "openai-compatible",
+    "anthropic",
+    "gemini",
+    "ollama"
+  ],
+  "status": "work-in-progress"
+}
