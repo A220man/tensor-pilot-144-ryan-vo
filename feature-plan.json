@@ -5,7 +5,7 @@
     {
       "id": "project-skeleton",
       "title": "FastAPI/React project skeleton with core infrastructure",
-      "status": "in_progress",
+      "status": "done",
       "acceptance": [
         "Backend: FastAPI app with health endpoint, SQLite models, pytest config",
         "Frontend: React+TypeScript+Vite with build/test scripts",

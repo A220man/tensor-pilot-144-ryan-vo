@@ -10,7 +10,7 @@ project-skeleton
 
 ### project-skeleton — FastAPI/React project skeleton with core infrastructure
 
-Status: in_progress
+Status: done
 
 Acceptance:
 - Backend: FastAPI app with health endpoint, SQLite models, pytest config

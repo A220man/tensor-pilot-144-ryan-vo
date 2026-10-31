@@ -2,7 +2,11 @@
   "name": "tensorpilot-frontend",
   "version": "1.0.0",
   "private": true,
-  "author": "Ryan Vo <ryandtvo@gmail.com>",
+  "author": {
+    "name": "Ryan Vo",
+    "email": "ryandtvo@gmail.com",
+    "url": "https://github.com/A220man"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
