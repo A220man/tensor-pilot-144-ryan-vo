@@ -179,3 +179,42 @@ async def delete_generation_job(
         user=user,
         db=db,
     )
+@router.post("/generate/stream")
+async def generate_speech_stream(
+    request: TTSGenerationRequest,
+    user: User = Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Generate speech with streaming audio response."""
+    # Validate voice profile if provided
+    if request.voice_profile_id:
+        from app.services.voice_service import voice_service
+        profile = await voice_service.get_profile_for_user(request.voice_profile_id, user, db)
+        if not profile:
+            raise HTTPException(status_code=404, detail="Voice profile not found")
+
+    async def audio_generator():
+        async for chunk in tts_service.generate_speech_stream(request, user, db):
+            yield chunk
+
+    await audit_service.log_action(
+        action="generate_stream",
+        resource_type="generation_job",
+        resource_id="stream",
+        user=user,
+        details={
+            "text_length": len(request.text),
+            "voice_profile_id": str(request.voice_profile_id) if request.voice_profile_id else None,
+            "language": request.language,
+        },
+        db=db,
+    )
+
+    return StreamingResponse(
+        audio_generator(),
+        media_type="audio/wav",
+        headers={
+            "Content-Disposition": "inline; filename=speech.wav",
+            "Cache-Control": "no-cache",
+        },
+    )

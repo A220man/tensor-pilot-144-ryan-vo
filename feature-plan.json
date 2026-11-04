@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "current_feature": "project-skeleton",
+  "current_feature": "tts-generation-api",
   "features": [
     {
       "id": "project-skeleton",
@@ -19,15 +19,22 @@
     {
       "id": "tts-generation-api",
       "title": "TTS generation API with VoxCPM2 integration",
-      "status": "planned",
+      "status": "done",
       "acceptance": [
         "POST /api/v1/tts/generate endpoint accepting text, reference audio, params",
         "Integration with VoxCPM2 model (mocked in tests)",
         "Parameter validation and error handling",
         "Audio response streaming"
       ],
-      "implementation": [],
-      "tests": []
+      "implementation": [
+        "backend/app/api/generation.py",
+        "backend/app/services/tts_service.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/components/tts/GenerationForm.tsx"
+      ],
+      "tests": [
+        "backend/tests/test_api.py::TestGenerationEndpoints::test_generate_speech_stream"
+      ]
     },
     {
       "id": "voice-cloning-workflow",
@@ -70,3 +77,4 @@
     }
   ]
 }
+

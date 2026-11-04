@@ -257,6 +257,28 @@ class TestGenerationEndpoints:
         async with AsyncClient(app=app, base_url="http://test") as client:
             response = await client.get(f"/api/v1/tts/jobs/{job_id}", headers=auth_headers)
         assert response.status_code == 404
+    @pytest.mark.asyncio
+    async def test_generate_speech_stream(self, app, auth_headers, test_voice_profile):
+        async with AsyncClient(app=app, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/tts/generate/stream",
+                json={
+                    "text": "Hello world",
+                    "voice_profile_id": str(test_voice_profile.id),
+                    "cfg_value": 2.0,
+                    "inference_timesteps": 10,
+                    "min_len": 2,
+                    "stream": True,
+                },
+                headers=auth_headers,
+            )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "audio/wav"
+        # Verify we get audio data
+        content = response.content
+        assert len(content) > 0
+        # Should be valid WAV data (starts with RIFF)
+        assert content[:4] == b"RIFF"
 
 
 class TestFinetuneEndpoints:
