@@ -93,9 +93,41 @@ export const GenerationForm = ({ voices, onGenerate, isGenerating }: GenerationF
 
   const onSubmit = async (data: GenerationFormData) => {
     try {
-      const response = await api.generateSpeechSync(data)
-      addJob(response)
-      onGenerate(response)
+      if (data.stream) {
+        // Streaming generation - receive audio chunks
+        const stream = await api.generateSpeechStream(data)
+        if (stream) {
+          // For now, collect all chunks and create a blob
+          // In a full implementation, this would use MediaSource or Web Audio API
+          const chunks: Uint8Array[] = []
+          const reader = stream.getReader()
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            if (value) chunks.push(value)
+          }
+          const blob = new Blob(chunks, { type: 'audio/wav' })
+          const audioUrl = URL.createObjectURL(blob)
+          // Create a mock job response for the UI
+          const mockJob = {
+            id: crypto.randomUUID(),
+            user_id: 'demo',
+            status: 'completed' as const,
+            input_text: data.text,
+            output_audio_path: audioUrl,
+            output_duration: 0,
+            output_sample_rate: 16000,
+            created_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+          }
+          addJob(mockJob)
+          onGenerate(mockJob)
+        }
+      } else {
+        const response = await api.generateSpeechSync(data)
+        addJob(response)
+        onGenerate(response)
+      }
     } catch (error) {
       console.error('Generation failed:', error)
       alert('Generation failed. Please try again.')

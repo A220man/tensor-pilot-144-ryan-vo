@@ -142,6 +142,12 @@ class ApiClient {
     const response = await this.client.post<GenerationJob>('/v1/tts/generate-sync', request)
     return response.data
   }
+  async generateSpeechStream(request: TTSGenerationRequest): Promise<ReadableStream<Uint8Array> | null> {
+    const response = await this.client.post('/v1/tts/generate/stream', request, {
+      responseType: 'stream',
+    })
+    return response.data
+  }
 
   async listJobs(params?: {
     page?: number

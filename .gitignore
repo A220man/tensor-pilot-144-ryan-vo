@@ -88,3 +88,12 @@ build/
 # Agent metadata
 .antigravitycli/
 .omp/
+.turbo/
+**/data/media/
+*.pyc
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm

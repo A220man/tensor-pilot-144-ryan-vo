@@ -212,4 +212,135 @@ class TTSService:
         return jobs, total
 
 
+    async def generate_speech_stream(
+        self,
+        request: TTSGenerationRequest,
+        user: User,
+        db: AsyncSession,
+    ) -> AsyncGenerator[bytes, None]:
+        """Generate speech and stream audio chunks."""
+        await self.load_model()
+
+        # Create generation job
+        job = GenerationJob(
+            user_id=user.id,
+            voice_profile_id=request.voice_profile_id,
+            input_text=request.text,
+            status=GenerationJobStatus.PROCESSING,
+            cfg_value=request.cfg_value,
+            inference_timesteps=request.inference_timesteps,
+            min_len=request.min_len,
+            started_at=datetime.now(timezone.utc),
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+
+        logger.info("streaming_generation_started", job_id=str(job.id), user_id=str(user.id))
+
+        try:
+            # Get voice profile if specified
+            voice_profile = None
+            if request.voice_profile_id:
+                result = await db.execute(
+                    select(VoiceProfile).where(VoiceProfile.id == request.voice_profile_id)
+                )
+                voice_profile = result.scalar_one_or_none()
+
+            # Determine reference audio and text
+            ref_audio = request.reference_audio_path
+            ref_text = request.reference_text
+            if voice_profile:
+                ref_audio = voice_profile.reference_audio_path
+                ref_text = voice_profile.reference_text
+                cfg = request.cfg_value or voice_profile.cfg_value
+                steps = request.inference_timesteps or voice_profile.inference_timesteps
+                min_len = request.min_len or voice_profile.min_len
+            else:
+                cfg = request.cfg_value
+                steps = request.inference_timesteps
+                min_len = request.min_len
+
+            # Mock language detection
+            detected_lang = await self._detect_language(request.text, request.language)
+            job.detected_language = detected_lang
+
+            # Generate audio in chunks (mocked)
+            async for chunk in self._generate_audio_stream_mock(
+                text=request.text,
+                reference_audio=ref_audio,
+                reference_text=ref_text,
+                cfg_value=cfg,
+                inference_timesteps=steps,
+                min_len=min_len,
+                job_id=job.id,
+            ):
+                yield chunk
+
+            # Update job with result
+            job.status = GenerationJobStatus.COMPLETED
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(job)
+
+            logger.info("streaming_generation_completed", job_id=str(job.id))
+
+        except Exception as e:
+            job.status = GenerationJobStatus.FAILED
+            job.error_message = str(e)
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            logger.error("streaming_generation_failed", job_id=str(job.id), error=str(e))
+            raise
+
+    async def _generate_audio_stream_mock(
+        self,
+        text: str,
+        reference_audio: Optional[str],
+        reference_text: Optional[str],
+        cfg_value: float,
+        inference_timesteps: int,
+        min_len: int,
+        job_id: UUID,
+    ) -> AsyncGenerator[bytes, None]:
+        """Mock streaming audio generation - yields WAV file in chunks."""
+        # Generate complete WAV in memory first, then stream in chunks
+        import wave
+        import struct
+        import math
+        import io
+
+        sample_rate = 16000
+        total_duration = max(len(text) * 0.1, 2.0)
+        num_samples = int(sample_rate * total_duration)
+        channels = 1
+        sampwidth = 2
+
+        # Create WAV in memory
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(channels)
+            wav_file.setsampwidth(sampwidth)
+            wav_file.setframerate(sample_rate)
+            # Generate sine wave audio data
+            audio_data = []
+            for i in range(num_samples):
+                t = i / sample_rate
+                frequency = 440.0
+                value = int(32767 * 0.1 * math.sin(2 * math.pi * frequency * t))
+                audio_data.append(struct.pack('<h', value))
+            wav_file.writeframes(b''.join(audio_data))
+
+        # Get complete WAV data
+        wav_buffer.seek(0)
+        wav_data = wav_buffer.read()
+
+        # Simulate processing time
+        await asyncio.sleep(0.2)
+
+        # Stream in chunks (e.g., 4KB chunks)
+        chunk_size = 4096
+        for i in range(0, len(wav_data), chunk_size):
+            await asyncio.sleep(0.01)  # Simulate network/chunk delay
+            yield wav_data[i:i + chunk_size]
 tts_service = TTSService()

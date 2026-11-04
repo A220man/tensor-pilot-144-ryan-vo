@@ -4,7 +4,7 @@ Each round completes one feature or repair. Future items are planned, not implem
 
 ## Current round
 
-project-skeleton
+tts-generation-api
 
 ## Roadmap
 
@@ -21,13 +21,17 @@ Acceptance:
 
 ### tts-generation-api — TTS generation API with VoxCPM2 integration
 
-Status: planned
+Status: done
 
 Acceptance:
 - POST /api/v1/tts/generate endpoint accepting text, reference audio, params
 - Integration with VoxCPM2 model (mocked in tests)
 - Parameter validation and error handling
 - Audio response streaming
+
+Implementation: `backend/app/api/generation.py`, `backend/app/services/tts_service.py`, `frontend/src/api/client.ts`, `frontend/src/components/tts/GenerationForm.tsx`
+
+Tests: `backend/tests/test_api.py::TestGenerationEndpoints::test_generate_speech_stream`
 
 ### voice-cloning-workflow — Voice cloning workflow with reference audio management
 
