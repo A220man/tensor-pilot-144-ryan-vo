@@ -143,53 +143,46 @@ class TestAuthorizationHeaders:
     """Authorization header tests."""
 
     @pytest.mark.asyncio
-    async def test_missing_token_returns_demo_user(self, app):
+    async def test_missing_token_returns_demo_user(self, async_client):
         """In demo mode, missing token returns demo user."""
-        from httpx import AsyncClient
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/auth/me")
+        response = await async_client.get("/api/v1/auth/me")
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "demo@example.com"
 
     @pytest.mark.asyncio
-    async def test_invalid_token_returns_demo_user(self, app):
+    async def test_invalid_token_returns_demo_user(self, async_client):
         """In demo mode, invalid token returns demo user."""
-        from httpx import AsyncClient
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(
-                "/api/v1/auth/me",
-                headers={"Authorization": "Bearer invalid-token"}
-            )
+        response = await async_client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": "Bearer invalid-token"}
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "demo@example.com"
 
     @pytest.mark.asyncio
-    async def test_valid_demo_token_accepted(self, app):
-        from httpx import AsyncClient
+    async def test_valid_demo_token_accepted(self, async_client):
         from app.core.security import create_access_token
         token = create_access_token({"sub": "demo", "roles": ["viewer"]})
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(
-                "/api/v1/auth/me",
-                headers={"Authorization": f"Bearer {token}"}
-            )
+        response = await async_client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {token}"}
+        )
         # In demo mode, this creates a demo user
         assert response.status_code == 200
+
 
 
 class TestCORS:
     """CORS configuration tests."""
 
     @pytest.mark.asyncio
-    async def test_cors_headers(self, app):
-        from httpx import AsyncClient
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.options(
-                "/api/v1/healthz",
-                headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET"}
-            )
+    async def test_cors_headers(self, async_client):
+        response = await async_client.options(
+            "/api/v1/healthz",
+            headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET"}
+        )
         # CORS middleware should allow the origin
         assert response.status_code in [200, 405]  # 405 if OPTIONS not implemented
 
@@ -209,15 +202,13 @@ class TestInputSanitization:
     """Input sanitization tests."""
 
     @pytest.mark.asyncio
-    async def test_sql_injection_prevention(self, app, auth_headers):
-        from httpx import AsyncClient
+    async def test_sql_injection_prevention(self, async_client, auth_headers):
         # Attempt SQL injection in search
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(
-                "/api/v1/voices",
-                params={"search": "'; DROP TABLE users; --"},
-                headers=auth_headers,
-            )
+        response = await async_client.get(
+            "/api/v1/voices",
+            params={"search": "'; DROP TABLE users; --"},
+            headers=auth_headers,
+        )
         # Should not crash, should return valid response
         assert response.status_code == 200
 

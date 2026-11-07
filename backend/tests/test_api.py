@@ -9,9 +9,8 @@ class TestHealthEndpoints:
     """Health check endpoint tests."""
 
     @pytest.mark.asyncio
-    async def test_health_check(self, app):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/healthz")
+    async def test_health_check(self, async_client):
+        response = await async_client.get("/api/v1/healthz")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] in ["healthy", "degraded"]
@@ -22,16 +21,14 @@ class TestHealthEndpoints:
         assert "timestamp" in data
 
     @pytest.mark.asyncio
-    async def test_readiness_check(self, app):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/ready")
+    async def test_readiness_check(self, async_client):
+        response = await async_client.get("/api/v1/ready")
         assert response.status_code == 200
         assert response.json()["status"] == "ready"
 
     @pytest.mark.asyncio
-    async def test_version_info(self, app):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/version")
+    async def test_version_info(self, async_client):
+        response = await async_client.get("/api/v1/version")
         assert response.status_code == 200
         data = response.json()
         assert "name" in data
@@ -43,9 +40,8 @@ class TestAuthEndpoints:
     """Authentication endpoint tests."""
 
     @pytest.mark.asyncio
-    async def test_oidc_config(self, app):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/auth/config")
+    async def test_oidc_config(self, async_client):
+        response = await async_client.get("/api/v1/auth/config")
         assert response.status_code == 200
         data = response.json()
         assert "issuer" in data
@@ -53,9 +49,8 @@ class TestAuthEndpoints:
         assert "authorization_endpoint" in data
 
     @pytest.mark.asyncio
-    async def test_demo_token(self, app):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post("/api/v1/auth/demo-token")
+    async def test_demo_token(self, async_client):
+        response = await async_client.post("/api/v1/auth/demo-token")
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -63,15 +58,14 @@ class TestAuthEndpoints:
         assert "expires_in" in data
 
     @pytest.mark.asyncio
-    async def test_me_unauthorized(self, app):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/auth/me")
+    async def test_me_unauthorized(self, async_client):
+        response = await async_client.get("/api/v1/auth/me")
         # In demo mode, this returns 200 with demo user
         assert response.status_code == 200
+
     @pytest.mark.asyncio
-    async def test_me_authorized(self, app, auth_headers, test_user):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/auth/me", headers=auth_headers)
+    async def test_me_authorized(self, async_client, auth_headers, test_user):
+        response = await async_client.get("/api/v1/auth/me", headers=auth_headers)
         # In demo mode, demo user is returned
         assert response.status_code == 200
         data = response.json()
@@ -83,18 +77,16 @@ class TestVoiceEndpoints:
     """Voice profile endpoint tests."""
 
     @pytest.mark.asyncio
-    async def test_list_voices_empty(self, app, auth_headers):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/voices", headers=auth_headers)
+    async def test_list_voices_empty(self, async_client, auth_headers):
+        response = await async_client.get("/api/v1/voices", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["items"] == []
         assert data["total"] == 0
 
     @pytest.mark.asyncio
-    async def test_list_voices_with_data(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/voices", headers=auth_headers)
+    async def test_list_voices_with_data(self, async_client, auth_headers, test_voice_profile):
+        response = await async_client.get("/api/v1/voices", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
@@ -102,9 +94,8 @@ class TestVoiceEndpoints:
         assert data["items"][0]["name"] == "Test Voice"
 
     @pytest.mark.asyncio
-    async def test_get_voice(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(f"/api/v1/voices/{test_voice_profile.id}", headers=auth_headers)
+    async def test_get_voice(self, async_client, auth_headers, test_voice_profile):
+        response = await async_client.get(f"/api/v1/voices/{test_voice_profile.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == str(test_voice_profile.id)
@@ -112,51 +103,46 @@ class TestVoiceEndpoints:
         assert data["language"] == "en"
 
     @pytest.mark.asyncio
-    async def test_get_voice_not_found(self, app, auth_headers):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(f"/api/v1/voices/{uuid4()}", headers=auth_headers)
+    async def test_get_voice_not_found(self, async_client, auth_headers):
+        response = await async_client.get(f"/api/v1/voices/{uuid4()}", headers=auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_create_voice_invalid_format(self, app, auth_headers):
+    async def test_create_voice_invalid_format(self, async_client, auth_headers):
         # Test without file - should fail validation
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/voices",
-                data={
-                    "name": "Test",
-                    "language": "en",
-                    "cfg_value": "2.0",
-                    "inference_timesteps": "10",
-                    "min_len": "2",
-                },
-                headers=auth_headers,
-            )
+        response = await async_client.post(
+            "/api/v1/voices",
+            data={
+                "name": "Test",
+                "language": "en",
+                "cfg_value": "2.0",
+                "inference_timesteps": "10",
+                "min_len": "2",
+            },
+            headers=auth_headers,
+        )
         # Should fail because no file uploaded
         assert response.status_code in [400, 422]
 
     @pytest.mark.asyncio
-    async def test_update_voice(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.patch(
-                f"/api/v1/voices/{test_voice_profile.id}",
-                json={"name": "Updated Voice", "description": "Updated"},
-                headers=auth_headers,
-            )
+    async def test_update_voice(self, async_client, auth_headers, test_voice_profile):
+        response = await async_client.patch(
+            f"/api/v1/voices/{test_voice_profile.id}",
+            json={"name": "Updated Voice", "description": "Updated"},
+            headers=auth_headers,
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Updated Voice"
         assert data["description"] == "Updated"
 
     @pytest.mark.asyncio
-    async def test_delete_voice(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.delete(f"/api/v1/voices/{test_voice_profile.id}", headers=auth_headers)
+    async def test_delete_voice(self, async_client, auth_headers, test_voice_profile):
+        response = await async_client.delete(f"/api/v1/voices/{test_voice_profile.id}", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify deleted
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(f"/api/v1/voices/{test_voice_profile.id}", headers=auth_headers)
+        response = await async_client.get(f"/api/v1/voices/{test_voice_profile.id}", headers=auth_headers)
         assert response.status_code == 404
 
 
@@ -164,19 +150,18 @@ class TestGenerationEndpoints:
     """TTS generation endpoint tests."""
 
     @pytest.mark.asyncio
-    async def test_generate_speech_sync(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/tts/generate-sync",
-                json={
-                    "text": "Hello world",
-                    "voice_profile_id": str(test_voice_profile.id),
-                    "cfg_value": 2.0,
-                    "inference_timesteps": 10,
-                    "min_len": 2,
-                },
-                headers=auth_headers,
-            )
+    async def test_generate_speech_sync(self, async_client, auth_headers, test_voice_profile):
+        response = await async_client.post(
+            "/api/v1/tts/generate-sync",
+            json={
+                "text": "Hello world",
+                "voice_profile_id": str(test_voice_profile.id),
+                "cfg_value": 2.0,
+                "inference_timesteps": 10,
+                "min_len": 2,
+            },
+            headers=auth_headers,
+        )
         assert response.status_code == 200
         data = response.json()
         assert "id" in data
@@ -184,34 +169,32 @@ class TestGenerationEndpoints:
         assert data["input_text"] == "Hello world"
 
     @pytest.mark.asyncio
-    async def test_generate_speech_async(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/tts/generate",
-                json={
-                    "text": "Hello world",
-                    "voice_profile_id": str(test_voice_profile.id),
-                },
-                headers=auth_headers,
-            )
+    async def test_generate_speech_async(self, async_client, auth_headers, test_voice_profile):
+        response = await async_client.post(
+            "/api/v1/tts/generate",
+            json={
+                "text": "Hello world",
+                "voice_profile_id": str(test_voice_profile.id),
+            },
+            headers=auth_headers,
+        )
         assert response.status_code == 200
         data = response.json()
         # In demo mode, generation completes synchronously and returns audio_url
         assert "audio_url" in data
 
     @pytest.mark.asyncio
-    async def test_list_jobs(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            # Create a job first
-            await client.post(
-                "/api/v1/tts/generate-sync",
-                json={
-                    "text": "Hello world",
-                    "voice_profile_id": str(test_voice_profile.id),
-                },
-                headers=auth_headers,
-            )
-            response = await client.get("/api/v1/tts/jobs", headers=auth_headers)
+    async def test_list_jobs(self, async_client, auth_headers, test_voice_profile):
+        # Create a job first
+        await async_client.post(
+            "/api/v1/tts/generate-sync",
+            json={
+                "text": "Hello world",
+                "voice_profile_id": str(test_voice_profile.id),
+            },
+            headers=auth_headers,
+        )
+        response = await async_client.get("/api/v1/tts/jobs", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
@@ -219,59 +202,55 @@ class TestGenerationEndpoints:
         assert data["items"][0]["input_text"] == "Hello world"
 
     @pytest.mark.asyncio
-    async def test_get_job(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            # Create a job first
-            create_resp = await client.post(
-                "/api/v1/tts/generate-sync",
-                json={
-                    "text": "Hello world",
-                    "voice_profile_id": str(test_voice_profile.id),
-                },
-                headers=auth_headers,
-            )
-            job_id = create_resp.json()["id"]
-            response = await client.get(f"/api/v1/tts/jobs/{job_id}", headers=auth_headers)
+    async def test_get_job(self, async_client, auth_headers, test_voice_profile):
+        # Create a job first
+        create_resp = await async_client.post(
+            "/api/v1/tts/generate-sync",
+            json={
+                "text": "Hello world",
+                "voice_profile_id": str(test_voice_profile.id),
+            },
+            headers=auth_headers,
+        )
+        job_id = create_resp.json()["id"]
+        response = await async_client.get(f"/api/v1/tts/jobs/{job_id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == job_id
         assert data["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_delete_job(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            # Create a job first
-            create_resp = await client.post(
-                "/api/v1/tts/generate-sync",
-                json={
-                    "text": "Hello world",
-                    "voice_profile_id": str(test_voice_profile.id),
-                },
-                headers=auth_headers,
-            )
-            job_id = create_resp.json()["id"]
-            response = await client.delete(f"/api/v1/tts/jobs/{job_id}", headers=auth_headers)
+    async def test_delete_job(self, async_client, auth_headers, test_voice_profile):
+        # Create a job first
+        create_resp = await async_client.post(
+            "/api/v1/tts/generate-sync",
+            json={
+                "text": "Hello world",
+                "voice_profile_id": str(test_voice_profile.id),
+            },
+            headers=auth_headers,
+        )
+        job_id = create_resp.json()["id"]
+        response = await async_client.delete(f"/api/v1/tts/jobs/{job_id}", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify deleted
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(f"/api/v1/tts/jobs/{job_id}", headers=auth_headers)
+        response = await async_client.get(f"/api/v1/tts/jobs/{job_id}", headers=auth_headers)
         assert response.status_code == 404
     @pytest.mark.asyncio
-    async def test_generate_speech_stream(self, app, auth_headers, test_voice_profile):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/tts/generate/stream",
-                json={
-                    "text": "Hello world",
-                    "voice_profile_id": str(test_voice_profile.id),
-                    "cfg_value": 2.0,
-                    "inference_timesteps": 10,
-                    "min_len": 2,
-                    "stream": True,
-                },
-                headers=auth_headers,
-            )
+    async def test_generate_speech_stream(self, async_client, auth_headers, test_voice_profile):
+        response = await async_client.post(
+            "/api/v1/tts/generate/stream",
+            json={
+                "text": "Hello world",
+                "voice_profile_id": str(test_voice_profile.id),
+                "cfg_value": 2.0,
+                "inference_timesteps": 10,
+                "min_len": 2,
+                "stream": True,
+            },
+            headers=auth_headers,
+        )
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/wav"
         # Verify we get audio data
@@ -285,16 +264,15 @@ class TestFinetuneEndpoints:
     """Fine-tuning endpoint tests."""
 
     @pytest.mark.asyncio
-    async def test_list_finetune_jobs(self, app, auth_headers):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get("/api/v1/finetune/jobs", headers=auth_headers)
+    async def test_list_finetune_jobs(self, async_client, auth_headers):
+        response = await async_client.get("/api/v1/finetune/jobs", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["items"] == []
         assert data["total"] == 0
 
     @pytest.mark.asyncio
-    async def test_create_finetune_job(self, app, auth_headers):
+    async def test_create_finetune_job(self, async_client, auth_headers):
         config = {
             "pretrained_path": "openbmb/VoxCPM2",
             "train_manifest": "train.jsonl",
@@ -321,8 +299,7 @@ class TestFinetuneEndpoints:
                 "dropout": 0.0,
             },
         }
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post("/api/v1/finetune/jobs", json=config, headers=auth_headers)
+        response = await async_client.post("/api/v1/finetune/jobs", json=config, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert "id" in data
@@ -334,18 +311,17 @@ class TestAuthorization:
     """Authorization and role tests."""
 
     @pytest.mark.asyncio
-    async def test_voice_create_requires_operator(self, app):
+    async def test_voice_create_requires_operator(self, async_client):
         """Test that voice creation requires operator role."""
         # In demo mode, demo user has operator role so authorization passes
         # This test verifies the endpoint structure works
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            # Send invalid data to test validation (not authorization)
-            response = await client.post("/api/v1/voices", data={"name": "Test"})
+        # Send invalid data to test validation (not authorization)
+        response = await async_client.post("/api/v1/voices", data={"name": "Test"})
         # Should get validation error (422) not auth error
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_admin_access(self, app):
+    async def test_admin_access(self, async_client):
         # Create admin user
         from app.models import User
         admin = User(
@@ -363,33 +339,30 @@ class TestValidation:
     """Input validation tests."""
 
     @pytest.mark.asyncio
-    async def test_generate_invalid_text(self, app, auth_headers):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/tts/generate-sync",
-                json={"text": ""},  # Empty text should fail
-                headers=auth_headers,
-            )
+    async def test_generate_invalid_text(self, async_client, auth_headers):
+        response = await async_client.post(
+            "/api/v1/tts/generate-sync",
+            json={"text": ""},  # Empty text should fail
+            headers=auth_headers,
+        )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_generate_invalid_cfg(self, app, auth_headers):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/tts/generate-sync",
-                json={"text": "Hello", "cfg_value": 100},  # Out of range
-                headers=auth_headers,
-            )
+    async def test_generate_invalid_cfg(self, async_client, auth_headers):
+        response = await async_client.post(
+            "/api/v1/tts/generate-sync",
+            json={"text": "Hello", "cfg_value": 100},  # Out of range
+            headers=auth_headers,
+        )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_voice_invalid_language(self, app, auth_headers):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/voices",
-                data={"name": "Test", "language": "xx"},  # Invalid language
-                headers=auth_headers,
-            )
+    async def test_voice_invalid_language(self, async_client, auth_headers):
+        response = await async_client.post(
+            "/api/v1/voices",
+            data={"name": "Test", "language": "xx"},  # Invalid language
+            headers=auth_headers,
+        )
         # Language validation happens in service layer
         assert response.status_code in [400, 422]
 

@@ -2,6 +2,7 @@
 
 import pytest
 import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -11,6 +12,7 @@ from app.core.database import Base, get_db
 from app.main import create_app
 from app.models import User, VoiceProfile, GenerationJob, AuditLog, UserRole, GenerationJobStatus
 from app.core.security import create_access_token
+
 
 
 # Test database URL (in-memory SQLite)
@@ -145,3 +147,11 @@ def auth_headers(test_user):
     """Create auth headers for test user."""
     token = create_access_token({"sub": str(test_user.id), "roles": test_user.roles})
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def async_client(app):
+    """Create async HTTP client for testing."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
