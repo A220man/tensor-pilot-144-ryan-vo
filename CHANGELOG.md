@@ -1,9 +1,15 @@
 # Changelog
 
-## 1.2.0 — work-in-progress checkpoint
+## 1.3.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
 
+## 1.2.0 — work-in-progress checkpoint
+
+### Fixed
+- Test compatibility with httpx 0.27.2+ — added `ASGITransport`-based `async_client` fixture in `tests/conftest.py` and updated all tests in `test_api.py` to use the new fixture instead of passing `app` directly to `AsyncClient`.
+
+Partial code published for continued development. Known issues: STATUS.md.
 ## 1.1.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
