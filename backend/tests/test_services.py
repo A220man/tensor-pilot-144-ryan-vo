@@ -56,6 +56,45 @@ class TestTTSService:
         assert job.cfg_value == test_voice_profile.cfg_value
 
     @pytest.mark.asyncio
+    async def test_generate_speech_stream_saves_job(self, db_session, test_user):
+        from app.services.tts_service import tts_service
+        from app.schemas import TTSGenerationRequest
+        from app.models import GenerationJob, GenerationJobStatus
+
+        request = TTSGenerationRequest(
+            text="Hello streaming world",
+            voice_profile_id=None,
+            cfg_value=2.0,
+            inference_timesteps=10,
+            min_len=2,
+            stream=True,
+        )
+
+        # Stream the generation and consume all chunks
+        chunks = []
+        async for chunk in tts_service.generate_speech_stream(request, test_user, db_session):
+            chunks.append(chunk)
+
+        # Verify we got audio data
+        assert len(chunks) > 0
+        audio_data = b''.join(chunks)
+        assert len(audio_data) > 0
+        assert audio_data[:4] == b"RIFF"  # Valid WAV header
+
+        # Verify job was created and updated with metadata
+        from sqlalchemy import select
+        result = await db_session.execute(
+            select(GenerationJob).where(GenerationJob.user_id == test_user.id)
+        )
+        job = result.scalar_one_or_none()
+        assert job is not None
+        assert job.input_text == "Hello streaming world"
+        assert job.status == GenerationJobStatus.COMPLETED
+        assert job.output_audio_path is not None
+        assert job.output_duration is not None
+        assert job.output_sample_rate == 16000
+        assert job.completed_at is not None
+    @pytest.mark.asyncio
     async def test_list_jobs_pagination(self, db_session, test_user):
         from app.services.tts_service import tts_service
         from app.models import GenerationJob, GenerationJobStatus

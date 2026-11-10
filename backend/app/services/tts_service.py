@@ -265,8 +265,8 @@ class TTSService:
             detected_lang = await self._detect_language(request.text, request.language)
             job.detected_language = detected_lang
 
-            # Generate audio in chunks (mocked)
-            async for chunk in self._generate_audio_stream_mock(
+            # Generate and save audio file (like non-streaming)
+            output_path = await self._generate_audio_mock(
                 text=request.text,
                 reference_audio=ref_audio,
                 reference_text=ref_text,
@@ -274,10 +274,18 @@ class TTSService:
                 inference_timesteps=steps,
                 min_len=min_len,
                 job_id=job.id,
-            ):
+            )
+
+            # Update job with audio metadata
+            job.output_audio_path = output_path
+            job.output_duration = max(len(request.text) * 0.1, 1.0)
+            job.output_sample_rate = 16000
+
+            # Stream the saved audio file in chunks
+            async for chunk in self._stream_audio_file(output_path):
                 yield chunk
 
-            # Update job with result
+            # Update job with completion status
             job.status = GenerationJobStatus.COMPLETED
             job.completed_at = datetime.now(timezone.utc)
             await db.commit()
@@ -343,4 +351,12 @@ class TTSService:
         for i in range(0, len(wav_data), chunk_size):
             await asyncio.sleep(0.01)  # Simulate network/chunk delay
             yield wav_data[i:i + chunk_size]
+
+    async def _stream_audio_file(self, file_path: str) -> AsyncGenerator[bytes, None]:
+        """Stream an audio file in chunks."""
+        chunk_size = 4096
+        with open(file_path, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                await asyncio.sleep(0.01)  # Simulate network/chunk delay
+                yield chunk
 tts_service = TTSService()
