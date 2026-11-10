@@ -1,9 +1,15 @@
 # Changelog
 
-## 1.3.0 — work-in-progress checkpoint
+## 1.4.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
 
+## 1.3.0 — work-in-progress checkpoint
+
+### Fixed
+- Streaming TTS generation now properly saves audio file and updates job record with output_audio_path, output_duration, and output_sample_rate metadata (previously only streamed audio without persisting job metadata)
+
+Partial code published for continued development. Known issues: STATUS.md.
 ## 1.2.0 — work-in-progress checkpoint
 
 ### Fixed
