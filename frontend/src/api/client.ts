@@ -118,7 +118,6 @@ class ApiClient {
     data: FormData
   ): Promise<VoiceProfile> {
     const response = await this.client.post<VoiceProfile>('/v1/voices', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
     })
     return response.data
   }
