@@ -365,6 +365,46 @@ class TestValidation:
         )
         # Language validation happens in service layer
         assert response.status_code in [400, 422]
+    @pytest.mark.asyncio
+    async def test_create_voice_success(self, async_client, auth_headers, test_user, tmp_path):
+        """Test successful voice profile creation with file upload."""
+        import wave
+        import os
+
+        # Create a temporary WAV file for testing
+        wav_path = tmp_path / "test_reference.wav"
+        with wave.open(str(wav_path), 'w') as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(16000)
+            # Write 1 second of silence
+            frames = b'\x00' * (16000 * 2)  # 1 second at 16kHz
+            wav.writeframes(frames)
+
+        # Read the file content
+        with open(wav_path, "rb") as f:
+            file_content = f.read()
+
+        # Submit voice profile creation with file upload
+        response = await async_client.post(
+            "/api/v1/voices",
+            files={"reference_audio": ("test_reference.wav", file_content, "audio/wav")},
+            data={
+                "name": "Test Voice",
+                "language": "en",
+                "cfg_value": "2.0",
+                "inference_timesteps": "10",
+                "min_len": "2",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+        data = response.json()
+        assert "id" in data
+        assert data["name"] == "Test Voice"
+        assert data["language"] == "en"
+        assert "reference_audio_path" in data
+
 
 
 from app.core.security import create_access_token
