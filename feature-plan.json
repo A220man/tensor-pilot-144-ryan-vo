@@ -39,7 +39,7 @@
     {
       "id": "voice-cloning-workflow",
       "title": "Voice cloning workflow with reference audio management",
-      "status": "planned",
+      "status": "in_progress",
       "acceptance": [
         "Upload and manage reference audio files",
         "Voice profile creation with metadata",
@@ -47,7 +47,9 @@
         "Frontend UI for voice management and generation"
       ],
       "implementation": [],
-      "tests": []
+      "tests": [
+        "backend/tests/test_api.py::TestValidation::test_create_voice_success"
+      ]
     },
     {
       "id": "multilingual-support",
@@ -77,4 +79,3 @@
     }
   ]
 }
-

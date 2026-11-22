@@ -35,13 +35,15 @@ Tests: `backend/tests/test_api.py::TestGenerationEndpoints::test_generate_speech
 
 ### voice-cloning-workflow — Voice cloning workflow with reference audio management
 
-Status: planned
+Status: in_progress
 
 Acceptance:
 - Upload and manage reference audio files
 - Voice profile creation with metadata
 - Generate speech using saved voice profiles
 - Frontend UI for voice management and generation
+
+Tests: `backend/tests/test_api.py::TestValidation::test_create_voice_success`
 
 ### multilingual-support — Multilingual TTS with language detection and optimization
 
