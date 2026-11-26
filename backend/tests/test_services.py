@@ -147,7 +147,7 @@ class TestVoiceService:
     @pytest.mark.asyncio
     async def test_list_profiles_pagination(self, db_session, test_user):
         from app.services.voice_service import voice_service
-        from app.models import VoiceProfile
+        from app.models import User, VoiceProfile
 
         # Create multiple profiles
         for i in range(5):
@@ -167,7 +167,7 @@ class TestVoiceService:
     @pytest.mark.asyncio
     async def test_get_profile_for_user(self, db_session, test_user):
         from app.services.voice_service import voice_service
-        from app.models import VoiceProfile
+        from app.models import User, VoiceProfile
 
         # Create a private profile for this test
         private_profile = VoiceProfile(
@@ -230,6 +230,51 @@ class TestVoiceService:
 
         result = await voice_service.update_profile(test_voice_profile.id, other_user, update, db_session)
         assert result is None
+
+
+
+    @pytest.mark.asyncio
+    async def test_delete_profile(self, db_session, test_user, test_voice_profile):
+        """Test deleting a voice profile and its reference audio."""
+        from app.services.voice_service import voice_service
+        from app.models import User, VoiceProfile
+
+        # Owner can delete their own profile
+        result = await voice_service.delete_profile(test_voice_profile.id, test_user, db_session)
+        assert result is True
+
+        # Profile should no longer exist
+        profile = await voice_service.get_profile(test_voice_profile.id, db_session)
+        assert profile is None
+
+        # Non-owner cannot delete (without admin role) - use a fresh profile
+        # Create a new profile for the non-owner test
+        new_profile = VoiceProfile(
+            owner_id=test_user.id,
+            name="Voice to Protect",
+            language="en",
+            reference_audio_path="/uploads/protect.wav",
+        )
+        db_session.add(new_profile)
+        await db_session.commit()
+        await db_session.refresh(new_profile)
+
+        other_user = User(
+            email="other@example.com",
+            username="other2",
+            full_name="Other User 2",
+            roles=["viewer"],
+        )
+        db_session.add(other_user)
+        await db_session.commit()
+
+        # Other user cannot delete this profile
+        result = await voice_service.delete_profile(new_profile.id, other_user, db_session)
+        assert result is False
+
+        # Profile should still exist since other user couldn't delete it
+        profile = await voice_service.get_profile(new_profile.id, db_session)
+        assert profile is not None
 
 
 class TestAuditService:
